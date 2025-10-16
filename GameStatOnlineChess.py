@@ -2,8 +2,10 @@ import requests
 import tkinter as tk
 from tkinter import messagebox, simpledialog
 from models import ChessRecord, Session
+from models import reset_chess_records
 from OnlineChessAPI import map_result_for_player
 from datetime import datetime, timezone
+from sqlalchemy import text
 class ChessApp:
 
     """
@@ -61,11 +63,16 @@ class ChessApp:
             "Esto borrará TODOS los registros (ganadas/perdidas) de la base de datos. ¿Continuar?"
         ):
             return
-        try: # Opción 1: delete en bloque: elimina todas las filas de chess_records
-            self.session.query(ChessRecord).delete() # elimina todas las filas
+        try: 
+            self.session.execute(text("TRUNCATE TABLE chess_records RESTART IDENTITY"))
             self.session.commit()
+
+            # Invalida el identity map / caché del ORM para no ver filas "fantasma"
+            self.session.expire_all()
+            # Refresca la lista y totales en UI
             self.refresh_list()
-            messagebox.showinfo("Listo", "Se borraron todos los registros.")
+
+            messagebox.showinfo("Listo", "Se borraron todos los registros y se reiniciaron los IDs.")
         except Exception as e:
             self.session.rollback()
             messagebox.showerror("Error", f"No se pudo borrar los registros: {e}")
@@ -225,7 +232,7 @@ class ChessApp:
                 return
         
             # Recorre los últimos N meses (ajústalo a gusto)
-            last_n_months = 6
+            last_n_months = 1
             month_urls = archives[-last_n_months:]
             print("Procesando meses:", month_urls)
 
@@ -330,6 +337,7 @@ class ChessApp:
 
 # Punto de entrada: crea la raíz de Tkinter (Tk) y arranca la app
 if __name__ == "__main__":
+    reset_chess_records(start_at_zero=False) 
     root = tk.Tk()
     app = ChessApp(root)
     root.mainloop()

@@ -52,4 +52,28 @@ Base.metadata.create_all(engine)
 # - autoflush=False: no envía automáticamente cambios a la BD (control manual)
 # - autocommit=False: no hace commit automáticamente (control manual)
 # - future=True: usa la nueva API 2.0 de SQLAlchemy 
-Session = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True) 
+Session = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+
+def reset_chess_records(start_at_zero: bool = False) -> None:
+    """
+    Borra todos los registros y reinicia la secuencia del id.
+    - start_at_zero=False -> la secuencia reinicia en 1 (recomendado)
+    - start_at_zero=True -> la secuencia reinicia en 0 (no típico, pero posible)
+    """
+    with engine.begin() as conn:
+        # Borra todos los registros
+        conn.execute(text("TRUNCATE TABLE chess_records RESTART IDENTITY"))
+        
+        # Reinicia la secuencia del id
+        if start_at_zero:
+            # Obtener el nombre real de la secuencia para 'chess_records.id'
+            seq_name = conn.execute(
+                text("SELECT pg_get_serial_sequence('chess_records', 'id')")
+            ).scalar()
+
+            if seq_name:
+                # 1) Permitir 0 como mínimo
+                conn.execute(text(f"ALTER SEQUENCE {seq_name} MINVALUE 1"))
+                # 2) Reinicia la secuencia para que el próximo id sea 0
+                conn.execute(text(f"ALTER SEQUENCE {seq_name} RESTART WITH 1"))
+            
