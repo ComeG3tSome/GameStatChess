@@ -18,11 +18,11 @@ def map_result_for_player(game_json: dict, username: str) -> str | None:
     # ¿jugaste con blancas o negras?
     if white.get("username", "").lower() == u:
         my_res = (white.get("result") or "").lower()
-        opp_user = black.get("username")
+        
     
     elif black.get("username", "").lower() == u:
         my_res = (black.get("result") or "").lower()
-        opp_user = black.get("username")   
+           
     else:
         return None  # partida de otra persona (no debería pasar)
 
