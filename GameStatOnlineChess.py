@@ -1,7 +1,9 @@
+import requests
 import tkinter as tk
 from tkinter import messagebox, simpledialog
 from models import ChessRecord, Session
-
+from OnlineChessAPI import map_result_for_player
+from datetime import datetime, timezone
 class ChessApp:
     def __init__(self, root):
         self.root = root
@@ -134,8 +136,117 @@ class ChessApp:
 
         try:
             # 1) Obtener Lista de archivos mensuales
-            url_archives = f"https://api.chess.com/pub/player/{Com3G3tSome}/games/archives"
-              
+            url_archives = f"https://api.chess.com/pub/player/{username}/games/archives"
+            r = requests.get(url_archives, headers=headers, timeout=20)
+            if r.status_code == 403:
+                messagebox.showerror("API 403", "Chess.com rechazó la solicitud. Agrega un User-Agent con contacto.")
+                return
+            if r.status_code == 404:
+                messagebox.showerror("Usuario no encontrado", f"No se encontró el usuario '{username}' en Chess.com.")
+                return
+            r.raise_for_status()
+            archives = r.json().get("archives", [])
+            print("Num archives:" , len(archives))
+            if not archives:
+                messagebox.showinfo("Sin datos", f"No hay archivos de partidas para '{username}'.")
+                return
+        
+            # Recorre los últimos N meses (ajústalo a gusto)
+            last_n_months = 6
+            month_urls = archives[-last_n_months:]
+            print("Procesando meses:", month_urls)
+
+            inserted = 0
+            scanned = 0
+            wins = 0
+            losses = 0
+            draws = 0
+
+            for month_url in month_urls:
+                print("GET month:", month_url)
+                m = requests.get(month_url, headers=headers, timeout=30)
+                print("Status month:", m.status_code)
+                if m.status_code == 403:
+                    messagebox.showerror("API 403", "Chess.com rechazó una descarga mensual. Revisa el User-Agent/ratio.")
+                    return 
+                m.raise_for_status()
+                games = m.json().get("games", [])
+                print(f"Partidas en {month_url}:", len(games))
+
+                for g in games:
+                    scanned += 1 # Cuenta las escaneadas
+
+                # (Opcional) filtrar por modalidad
+                # if g.get("time_class") not in {"rapid", "blitz", "bullet"}
+                #   continue
+
+                    outcome = map_result_for_player(g, username)
+                    if outcome is None:
+                        continue # Ignoramos empates/otros estados
+                    if outcome == "Ganada":
+                        wins += 1
+                    elif outcome == "Perdida":
+                        losses += 1
+                    
+                    # Fecha: usaremos end_time (epoch) si existe
+                    end_ts = g.get("end_time")
+                    date_str = datetime.fromtimestamp(end_ts, tz=timezone.utc).strftime("%Y-%m-%d") if end_ts else ""
+                
+                    # Oponente (Lo determinamos dentro del helper; repetimos aquí por simplicidad)
+                    white = g.get("white", {})
+                    black = g.get("black", {})
+                    if white.get("username", "").lower() == username.lower():
+                        opponent = black.get("username")
+                    else:
+                        opponent = white.get("username")
+
+                    # Evitar duplicados básicos: (opponent, result, date)
+                    exists = (
+                        self.session.query(ChessRecord)
+                        .filter(
+                            ChessRecord.opponent == opponent,
+                            ChessRecord.result == outcome,
+                            ChessRecord.date == date_str  
+                        )
+                        .first()
+                    )
+                    if not exists:
+                        self.session.add(ChessRecord(opponent=opponent, result=outcome, date=date_str))
+                        inserted +=1
+                
+            self.session.commit()
+            self.refresh_list()
+            messagebox.showinfo("Sincronización Completa", f"Se insertaron {inserted} partidas (Ganada/Perdida).")
+
+            msg = [
+                f"Escaneadas: {scanned}",
+                f"Wins detectadas: {wins}",
+                f"Losses detectadas: {losses}",
+                f"Empates detectados: {draws}",
+                f"Nuevos insertados: {inserted}"
+            ]
+            messagebox.showinfo("Sincronización Chess.com", "\n".join(msg))
+            print("\n".join(msg))
+
+            # Mensaje adicional si no insertó nada
+            if inserted == 0:
+                messagebox.showinfo(
+                    "Sin partidas nuevas",
+                    "No se insertaron partidas nuevas.\n"
+                    "- Puede que todas fueran empates (actualmente ignorados),\n"
+                    "- o que ya estuvieran registradas (deduplicación),\n"
+                    "- o que no haya partidas en los últimos meses procesados."
+                )
+
+        except requests.RequestException as e:
+            messagebox.showerror("Red", f"Error de red al consultar Chess.com: {e}")        
+            print("Network error:", e)
+        except Exception as e:
+            self.session.rollback()
+            messagebox.showerror("Error", f"Ocurrió un error al sincronizar: {e}")
+            print("Sync error:", e)
+
+                 
 if __name__ == "__main__":
     root = tk.Tk()
     app = ChessApp(root)
