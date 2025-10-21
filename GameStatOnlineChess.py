@@ -1,13 +1,24 @@
 import requests 
+import re
 import tkinter as tk
-from tkinter import messagebox, simpledialog
-from models import ChessRecord, Session
-from models import reset_chess_records
+import tkinter.font as tkfont
+from tkinter import messagebox, simpledialog, ttk
+from models import ChessRecord, Session, reset_chess_records
 from OnlineChessAPI import map_result_for_player
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from sqlalchemy import text
-class ChessApp:
 
+# Constantes de la App
+APP_TITLE = "Registro de Partidas de Ajedrez - Chess.com"
+USER_AGENT = "ChessRecordApp/1.0 (contacto: paradigmiftzu09@gmail.com)"
+MONTHS_TO_FETCH = 1
+LISTBOX_HEIGHT = 14
+PAD = 10
+
+COLUMNS=("id", "date", "opponent", "result") # Orden de columnas del Treeview
+VALID_RESULTS=("Ganada", "Perdida")
+
+class ChessApp:
     """
     App de escritorio (Tkinter) para llevar un registro de partidas de Chess.com.
     - CRUD básico (agregar, editar, eliminar resultados)
@@ -18,40 +29,214 @@ class ChessApp:
 
     def __init__(self, root):
         self.root = root
-        self.root.title("Registro de Partidas de Ajedrez - Chess.com")  
+        self.root.title(APP_TITLE)  
+        self.root.minsize(680, 420)
+        self._setup_style()
 
         # Crea una sesión de SQLAlchemy (se importa de models.py)
         self.session = Session()
         
+        # --- Layout: header / body / footer ---
+        self._build_header()
+        self._build_body()
+        self._build_buttons()
+
+        self.refresh_table()
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+
+    def _build_header(self) -> None:
+         # Cabecera
+        header = ttk.Frame(self.root, padding=PAD)
+        header.grid(row=0, column=0, sticky="ew")
+        header.grid_columnconfigure(0, weight=1)
 
         #----UI: Totales--------
         # Etiqueta superior que muestra el conteo de ganadas y perdidas 
-        self.lbl_totals = tk.Label(root, text="Ganadas: 0 | Perdidas: 0")
-        self.lbl_totals.pack(pady=(10,0), anchor="w")
+        self.totals_lbl = ttk.Label(header, text="Ganadas: 0 | Perdidas: 0", style="Header.TLabel")
+        self.totals_lbl.grid(row=0, column=0, sticky="w")   
 
-        # ----UI: Listado-------
-        # Listbox donde se listan los registros (id: resultado)
-        self.listbox = tk.Listbox(root, width=40)
-        self.listbox.pack(pady=10)
+    def _build_body(self) -> None:
+        #---Cuerpo: Listado---
+        body = ttk.Frame(self.root, padding=(PAD, 0, PAD, PAD))
+        body.grid(row=1, column=0, sticky="nsew")
+        self.root.grid_rowconfigure(1, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
 
-        # Refresca la lista al iniciar
-        self.refresh_list()
+        # Treeview con columnas
+        self.tree = ttk.Treeview(
+            body,
+            columns=COLUMNS,
+            show="headings",
+            selectmode="browse",
+            height=LISTBOX_HEIGHT
+        )
 
+        self.tree.heading("id", text="ID")
+        self.tree.heading("date", text="Fecha")
+        self.tree.heading("opponent", text="Oponente")
+        self.tree.heading("result", text="Resultado")
+
+        self.tree.column("id", width=60, anchor="center")
+        self.tree.column("date", width=120, anchor="center")
+        self.tree.column("opponent", width=220, anchor="w")
+        self.tree.column("result", width=120, anchor="center")
+
+        self.tree.grid(row=0, column=0, sticky="nsew")
+
+        # Scrollbar
+        vscroll = ttk.Scrollbar(body, orient="vertical", command=self.tree.yview)
+        vscroll.grid(row=0, column=1, sticky="ns", padx=(5,0))
+        self.tree.configure(yscrollcommand=vscroll.set)
+
+        body.grid_rowconfigure(0, weight=1)
+        body.grid_columnconfigure(0, weight=1)
+
+    def _build_buttons(self) -> None:
+        btns = ttk.Frame(self.root, padding=(PAD, 0, PAD, PAD))
+        btns.grid(row=2, column=0, sticky="ew")
+
+         # ----UI: Botones------
+        ttk.Button(btns, text="Agregar Ganada", command=lambda: self.open_add_dialog("Ganada")).grid(row=0, column=0, padx=(0,6))
+        ttk.Button(btns, text="Agregar Perdida", command=lambda: self.open_add_dialog("Perdida")).grid(row=0, column=1, padx=6)
+        ttk.Button(btns, text="Editar", command=self.open_edit_dialog).grid(row=0, column=2, padx=6)
+        ttk.Button(btns, text="Eliminar", command=self.delete_selected).grid(row=0, column=3, padx=6)
+        ttk.Button(btns, text="Sincronizar Chess.com", command=self.sync_from_chesscom).grid(row=0, column=4, padx=6)
+        ttk.Button(btns, text="Reset (Borrar Todo)", command=self.reset_all_records).grid(row=0, column=5, padx=(6,0))
+         
+        btns.grid_columnconfigure(6, weight=1)
         
-        # Frame para contener los botones
-        btn_frame = tk.Frame(root)
-        btn_frame.pack()
+    def refresh_table(self) -> None:
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        
+        try:
+            records=self.session.query(ChessRecord).order_by(ChessRecord.id).all()
+            for rec in records:
+                self.tree.insert("", "end", iid=str(rec.id), values=(rec.id, rec.date or "", rec.opponent or "", rec.result))
+        except Exception as e:
+            messagebox.showerror("DB", f"No se pudieron leer registros:\n{e}")
+            return
+    
+        self.update_totals()
 
-        # ----UI: Botones------
-        tk.Button(btn_frame, text="Agregar Ganada", command=lambda: self.add_record("Ganada")).grid(row=0, column=0, padx=5)
-        tk.Button(btn_frame, text="Agregar Perdida", command=lambda: self.add_record("Perdida")).grid(row=0, column=1, padx=5)
-        tk.Button(btn_frame, text="Editar", command=self.edit_record).grid(row=0, column=2, padx=5)
-        tk.Button(btn_frame, text="Eliminar", command=self.delete_record).grid(row=0, column=3, padx=5)
-        tk.Button(btn_frame, text="Sincronizar Chess.com", command=self.sync_from_chesscom).grid(row=0, column=4, padx=5)
-        tk.Button(btn_frame, text="Reset (Borrar Todo)", command=self.reset_all_records).grid(row=0, column=5, padx=5)
+    def update_totals(self):
+        """
+        Actualiza los totales de ganadas/perdidas
+        """
+        try:
+            g = self.session.query(ChessRecord).filter(ChessRecord.result == "Ganada").count()
+            p = self.session.query(ChessRecord).filter(ChessRecord.result == "Perdida").count()  
+            self.totals_lbl.config(text=f"Ganadas: {g} | Perdidas: {p}")
+        except Exception:
+             # Si hay error de conexión, no rompas la UI
+             pass
+    
+    def open_add_dialog(self, default_result: str | None = None) -> None:
+        self._open_record_dialog(title="Agregar registro", default_result=default_result)
 
-        # Maneja el cierre de la ventana para cerrar la sesión
-        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+    def open_edit_dialog(self) -> None:
+        rec=self._get_selected_record()    
+        if not rec:
+            messagebox.showwarning("Editar", "Seleccione un registro.")
+            return
+        self._open_record_dialog(title="Editar registro", record=rec)
+
+    def _open_record_dialog(self, title: str, record: ChessRecord | None = None, default_result: str | None = None) -> None:
+        """
+        Crea un diálogo simple (Toplevel) para agregar/editar
+        """
+        dlg = tk.Toplevel(self.root)
+        dlg.title(title)
+        dlg.transient(self.root)
+        dlg.grab_set() # Modal
+        dlg.resizable(False, False)
+        pad=12
+
+        frm = ttk.Frame(dlg, padding=pad)
+        frm.grid(row=0, column=0, sticky="nsew")
+
+        ttk.Label(frm, text="Resultado:").grid(row=0, column=0, sticky="w")
+
+        result_var = tk.StringVar(value=(record.result if record else (default_result or "Ganada")))
+        result_cb = ttk.Combobox(frm, textvariable=result_var, values=VALID_RESULTS, state="readonly", width = 14)
+        result_cb.grid(row=0, column=1, sticky="w", pady=3)
+
+        ttk.Label(frm, text="Oponente:").grid(row=1, column=0, sticky="w")
+
+        opp_var = tk.StringVar(value=(record.opponent if record else ""))
+        opp_entry = ttk.Entry(frm, textvariable=opp_var, width=28)
+        opp_entry.grid(row=1, column=1, sticky="w", pady=3)
+
+        ttk.Label(frm, text="Fecha (YYYY=MM-DD):").grid(row=2, column=0, sticky="w")
+        date_var = tk.StringVar(value=(record.date if record and record.date else date.today().isoformat()))
+        date_entry = ttk.Entry(frm, textvariable=date_var, width=16)
+        date_entry.grid(row=2, column=1, sticky="w", pady=3)
+
+        btns = ttk.Frame(frm)
+        btns.grid(row=3, column=0, columnspan=2, pady=(pad,0), sticky="e")
+
+        def on_accept():
+            res = result_var.get()
+            if res not in VALID_RESULTS:
+                messagebox.showerror("Validación", "Resultado debe ser 'Ganada' o 'Perdida'.", parent=dlg)
+                return
+            
+            d = date_var.get().strip()
+            if d and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", d):
+                messagebox.showerror("Validación", "Fecha inválida. Usa formato YYYY-MM-DD.", parent=dlg)
+                return
+            
+            opp = opp_var.get().strip() or None
+
+            try:
+                if record:
+                    record.result = res
+                    record.opponent = opp
+                    record.date = d or None
+                else:
+                    self.session.add(ChessRecord(result=res, opponent=opp, date=d or None))
+                self.session.commit()
+                self.refresh_table()
+                dlg.destroy()
+            except Exception as e:
+                self.session.rollback()
+                messagebox.showerror("DB", f"No se pudo guardar:\n{e}", parent=dlg)
+
+        def on_cancel():
+            dlg.destroy()
+
+        ttk.Button(btns, text="Cancelar", command=on_cancel).grid(row=0, column=0, padx=(0,6))
+        ttk.Button(btns, text="Guardar", command=on_accept).grid(row=0, column=1)
+
+        # Enfoque inicial
+        (opp_entry if not record else result_cb).focus_set()
+        self.root.wait_window(dlg)
+
+    def _get_selected_record(self) -> ChessRecord | None:
+        sel = self.tree.selection()
+        if not sel:
+            return None
+        rec_id = int(sel[0])
+        try:
+            rec = self.session.get(ChessRecord, rec_id)
+            return rec
+        except Exception:
+            return None
+
+    def delete_selected(self) -> None:
+        rec = self._get_selected_record()
+        if not rec:
+            messagebox.showwarning("Eliminar", "Selecciona un registro")
+            return
+        if not messagebox.askyesno("Confirmar", f"¿Eliminar registro #{rec.id}?", default="no"):
+            return
+        try:
+            self.session.delete(rec)
+            self.session.commit()
+            self.refresh_table()
+        except Exception as e:
+            self.session.rollback()
+            messagebox.showerror("DB", f"No se pudo eliminar:\n{e}")
 
     def reset_all_records(self):
         """
@@ -60,7 +245,7 @@ class ChessApp:
         """
         if not messagebox.askyesno(
             "Confirmar",
-            "Esto borrará TODOS los registros (ganadas/perdidas) de la base de datos. ¿Continuar?"
+            "Esto borrará TODOS los registros (ganadas/perdidas) de la base de datos y reiniciará los IDs. ¿Continuar?"
         ):
             return
         try: 
@@ -69,123 +254,15 @@ class ChessApp:
 
             # Invalida el identity map / caché del ORM para no ver filas "fantasma"
             self.session.expire_all()
-            # Refresca la lista y totales en UI
-            self.refresh_list()
+            # Refrescar
+            self.refresh_table()
 
             messagebox.showinfo("Listo", "Se borraron todos los registros y se reiniciaron los IDs.")
         except Exception as e:
             self.session.rollback()
             messagebox.showerror("Error", f"No se pudo borrar los registros: {e}")
 
-       # self.root.protocol("WM_DELETE_WINDOW", self.on_close)
-    def refresh_list(self):
-        """
-        Refresca el Listbox con los registros actuales de la base de datos y actualiza los totales
-        """
-        self.listbox.delete(0, tk.END)
-
-        try:
-             records = self.session.query(ChessRecord).all()
-        except Exception as e:
-                messagebox.showerror("Error", f"No se pudo leer registros: {e}")
-                return
-
-        # Muestra solo id y resultado; puedes añadir opponent/date si quieres
-        for record in records:
-            self.listbox.insert(tk.END, f"{record.id}: {record.result}")
-
-        # Actualiza la etiqueta de totales
-        self.update_totals()
-
-    def update_totals(self):
-        """
-        Calcula y muestra totales de ganadas/perdidas
-        """
-        try:
-            g = self.session.query(ChessRecord).filter(ChessRecord.result == "Ganada").count()
-            p = self.session.query(ChessRecord).filter(ChessRecord.result == "Perdida").count()  
-            self.lbl_totals.config(text=f"Ganadas: {g} | Perdidas: {p}")
-        except Exception:
-             # Si hay error de conexión, no rompas la UI
-             pass
-            
-             
-    def add_record(self, result):
-        """
-        Agrega un registro con resultado 'Ganada' o 'Perdida'.
-        (opponent y date quedan opcionales por tu modelo actual)
-        """
-        if result not in ("Ganada", "Perdida"):
-             messagebox.showerror("Error", "Resultado inválido")
-             return
-        try:
-             new_record = ChessRecord(result=result) 
-             self.session.add(new_record)
-             self.session.commit()
-             self.refresh_list()
-        except Exception as e:
-             self.session.rollback()
-             messagebox.showerror("Error", f"No se pudo agregar el registro: {e}")
-
-    def delete_record(self):
-        """
-        Elimina el registro seleccionado en el listbox.
-        """
-        selection = self.listbox.curselection()
-        if not selection:
-            messagebox.showwarning("Atención", "Selecciona un registro para eliminar.")
-            return
-        record_id = int(self.listbox.get(selection[0]).split(":")[0])
-        try:
-            record = self.session.get(ChessRecord, record_id)
-
-            if not record:
-                messagebox.showwarning("Atención", "No se encontró el registro.")
-                return
-            self.session.delete(record)
-            self.session.commit()
-            self.refresh_list()
-        except Exception as e:
-            self.session.rollback()
-            messagebox.showerror("Error", f"No se pudo eliminar: {e}")
     
-    def edit_record(self):
-       """
-       Edita el resultado del registro seleccionado: 'Ganada' o 'Perdida'.
-       """
-       selection = self.listbox.curselection()
-       if not selection:
-           messagebox.showwarning("Atención", "Selecciona un registro para editar.")
-           return
-       record_id = int(self.listbox.get(selection[0]).split(":")[0])
-
-       try:
-            record = self.session.get(ChessRecord, record_id)
-            if not record:
-                messagebox.showwarning("Atención", "No se encontró el registro.")
-                return
-
-            # Diálogo simple para nuevo valor
-            new_result = simpledialog.askstring(
-                "Editar", 
-                "Nuevo resultado (Ganada o Perdida):",
-                initialvalue=record.result
-            )
-            if new_result is None:
-                 return # Cancelado
-            
-            new_result = new_result.strip().capitalize()
-            if new_result not in ("Ganada", "Perdida"):
-                 messagebox.showerror("Error", "Resultado inválido. Usa 'Ganada' o 'Perdida'.")
-                 return
-            
-            record.result = new_result
-            self.session.commit()
-            self.refresh_list()
-       except Exception as e:
-            self.session.rollback()
-            messagebox.showerror("Error", f"No se pudo editar: {e}")
-
     def on_close(self):
         """
         Cierre limpio: cierra la sesión de la base de datos de SQLAlchemy y destruye la ventana
@@ -194,6 +271,51 @@ class ChessApp:
             self.session.close()
         finally:
             self.root.destroy()
+
+    def _setup_style(self) -> None:
+        """
+        Configura estilos base para ttk y fuente por defecto.
+        Intenta usar un tema agradable si está disponible.
+        """
+        try:
+            # Fuente por defecto para (casi) todos los widgets (tk y ttk)
+            # Afectará widgets creados después de esta llamada
+            self.root.option_add('*Font', '{Segoe UI} 10') # Cambia por la que prefieras
+            style = ttk.Style(self.root)
+
+
+            # Selecciona un tema disponible (orden de preferencia)
+            preferred = ('vista', 'xpnative', 'clam', 'default')
+            available = style.theme_names()
+            for t in preferred:
+                if t in available:
+                    style.theme_use(t)
+                    break
+            
+            # Ajustar fuentes por defecto de Tk (no cadenas sueltas)
+            for fname in ("TkDefaultFont", "TkTextFont", "TkHeadingFont", "TkMenuFont"):
+                try:
+                    f = tkfont.nametofont(fname)
+                    f.configure(family="Segoe UI", size=10) # o la familia que prefieras
+                except tk.TclError:
+                    pass
+
+            # Crea una fuente nombrada (evita el problema con "Segoe UI")
+            header_font = tkfont.Font(family="Segoe UI", size = 10, weight="bold")
+
+            # Ajustes suaves para botones y etiquetas 
+            style.configure('TButton', padding=(10,6))
+            style.configure('TLabel', padding=(0,2))
+            style.configure('Header.TLabel', font=header_font)
+
+            style.configure("Treeview", rowheight=24)
+            style.configure("Treeview.Heading", font=("Segoe UI", 10, "bold"))
+
+        except Exception: 
+            # Si algo falla (tema no disponible, etc.), seguimos con los valores por defecto
+            pass
+    
+
 
     # Sincronización con Chess.com
     def sync_from_chesscom(self):
@@ -208,7 +330,7 @@ class ChessApp:
         
         # Importante: agrega un User-Agent con contacto en caso de que Chess.com bloquee la solicitud
         headers = {
-            "User-Agent": "ChessRecordApp/1.0 (contacto: tu_correo@ejemplo.com)"
+            "User-Agent": USER_AGENT
         }
 
 
@@ -231,9 +353,8 @@ class ChessApp:
                 messagebox.showinfo("Sin datos", f"No hay archivos de partidas para '{username}'.")
                 return
         
-            # Recorre los últimos N meses (ajústalo a gusto)
-            last_n_months = 1
-            month_urls = archives[-last_n_months:]
+           
+            month_urls = archives[-MONTHS_TO_FETCH:]
             print("Procesando meses:", month_urls)
 
             # Contadores para feedback
@@ -257,10 +378,6 @@ class ChessApp:
 
                 for g in games:
                     scanned += 1 # Cuenta las partidas escaneadas
-
-                # (Opcional) filtrar por modalidad
-                # if g.get("time_class") not in {"rapid", "blitz", "bullet"}
-                #   continue
                     
                     # Mapear resultado para 'username' -> "Ganada"/"Perdida"/None
                     outcome = map_result_for_player(g, username)
@@ -301,7 +418,7 @@ class ChessApp:
             
             # Persistir cambios y refrescar UI
             self.session.commit()
-            self.refresh_list()
+            self.refresh_table()
             messagebox.showinfo("Sincronización Completa", f"Se insertaron {inserted} partidas (Ganada/Perdida).")
 
             # Resumen visible: (tanto en messagebox como en consola)
