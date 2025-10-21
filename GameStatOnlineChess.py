@@ -10,7 +10,7 @@ from sqlalchemy import text
 
 # Constantes de la App
 APP_TITLE = "Registro de Partidas de Ajedrez - Chess.com"
-USER_AGENT = "ChessRecordApp/1.0 (contacto: paradigmiftzu09@gmail.com)"
+USER_AGENT = "ChessRecordApp/1.0 (contacto: paradigmshiftzu09@gmail.com)"
 MONTHS_TO_FETCH = 1
 LISTBOX_HEIGHT = 14
 PAD = 10
