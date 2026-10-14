@@ -118,32 +118,32 @@ class ChessApp:
             return
     
         self.update_totals()
-# TE QUEDASTE AQUI
+
     def update_totals(self):
         """
         Update the win/loss totals
         """
         try:
-            g = self.session.query(ChessRecord).filter(ChessRecord.result == "Ganada").count()
-            p = self.session.query(ChessRecord).filter(ChessRecord.result == "Perdida").count()  
+            g = self.session.query(ChessRecord).filter(ChessRecord.result == "Win").count()
+            p = self.session.query(ChessRecord).filter(ChessRecord.result == "Loss").count()  
             self.totals_lbl.config(text=f"Ganadas: {g} | Perdidas: {p}")
         except Exception:
-             # Si hay error de conexión, no rompas la UI
+             # If there is a connection error, don't break the UI
              pass
     
     def open_add_dialog(self, default_result: str | None = None) -> None:
-        self._open_record_dialog(title="Agregar registro", default_result=default_result)
+        self._open_record_dialog(title="Add record", default_result=default_result)
 
     def open_edit_dialog(self) -> None:
         rec=self._get_selected_record()    
         if not rec:
-            messagebox.showwarning("Editar", "Seleccione un registro.")
+            messagebox.showwarning("Edit", "Select a record")
             return
-        self._open_record_dialog(title="Editar registro", record=rec)
+        self._open_record_dialog(title="Edit record", record=rec)
 
     def _open_record_dialog(self, title: str, record: ChessRecord | None = None, default_result: str | None = None) -> None:
         """
-        Crea un diálogo simple (Toplevel) para agregar/editar
+        Create a simple dialog (Toplevel) for adding/editing
         """
         dlg = tk.Toplevel(self.root)
         dlg.title(title)
@@ -157,11 +157,11 @@ class ChessApp:
 
         ttk.Label(frm, text="Resultado:").grid(row=0, column=0, sticky="w")
 
-        result_var = tk.StringVar(value=(record.result if record else (default_result or "Ganada")))
+        result_var = tk.StringVar(value=(record.result if record else (default_result or "Win")))
         result_cb = ttk.Combobox(frm, textvariable=result_var, values=VALID_RESULTS, state="readonly", width = 14)
         result_cb.grid(row=0, column=1, sticky="w", pady=3)
 
-        ttk.Label(frm, text="Oponente:").grid(row=1, column=0, sticky="w")
+        ttk.Label(frm, text="Opponent:").grid(row=1, column=0, sticky="w")
 
         opp_var = tk.StringVar(value=(record.opponent if record else ""))
         opp_entry = ttk.Entry(frm, textvariable=opp_var, width=28)
@@ -178,12 +178,12 @@ class ChessApp:
         def on_accept():
             res = result_var.get()
             if res not in VALID_RESULTS:
-                messagebox.showerror("Validación", "Resultado debe ser 'Ganada' o 'Perdida'.", parent=dlg)
+                messagebox.showerror("Validation", "Result must be 'Win' or 'Loss'.", parent=dlg)
                 return
             
             d = date_var.get().strip()
             if d and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", d):
-                messagebox.showerror("Validación", "Fecha inválida. Usa formato YYYY-MM-DD.", parent=dlg)
+                messagebox.showerror("Validation", "Invalid date. Use format YYYY-MM-DD.", parent=dlg)
                 return
             
             opp = opp_var.get().strip() or None
@@ -200,7 +200,7 @@ class ChessApp:
                 dlg.destroy()
             except Exception as e:
                 self.session.rollback()
-                messagebox.showerror("DB", f"No se pudo guardar:\n{e}", parent=dlg)
+                messagebox.showerror("DB", f"Could not be saved:\n{e}", parent=dlg)
 
         def on_cancel():
             dlg.destroy()
@@ -226,9 +226,9 @@ class ChessApp:
     def delete_selected(self) -> None:
         rec = self._get_selected_record()
         if not rec:
-            messagebox.showwarning("Eliminar", "Selecciona un registro")
+            messagebox.showwarning("Delete", "Select a record")
             return
-        if not messagebox.askyesno("Confirmar", f"¿Eliminar registro #{rec.id}?", default="no"):
+        if not messagebox.askyesno("Confirm", f"Delete record #{rec.id}?", default="no"):
             return
         try:
             self.session.delete(rec)
@@ -236,36 +236,36 @@ class ChessApp:
             self.refresh_table()
         except Exception as e:
             self.session.rollback()
-            messagebox.showerror("DB", f"No se pudo eliminar:\n{e}")
+            messagebox.showerror("DB", f"Could not be deleted:\n{e}")
 
     def reset_all_records(self):
         """
-        Borra todos los registros de la base de datos tras pedir confirmación.
-        (Útil para empezar de cero o si la sincronización falló)
+        Deletes all database records after asking for confirmation.
+        (Useful for starting from scratch or if synchronization failed)
         """
         if not messagebox.askyesno(
-            "Confirmar",
-            "Esto borrará TODOS los registros (ganadas/perdidas) de la base de datos y reiniciará los IDs. ¿Continuar?"
+            "Confirm",
+            "This will delete ALL records (wins/losses) from the database and reset the IDs. Continue?"
         ):
             return
         try: 
             self.session.execute(text("TRUNCATE TABLE chess_records RESTART IDENTITY"))
             self.session.commit()
 
-            # Invalida el identity map / caché del ORM para no ver filas "fantasma"
+            # Invalidates the ORM identity map/cache to avoid seeing "phantom" rows
             self.session.expire_all()
-            # Refrescar
+            # Refresh
             self.refresh_table()
 
-            messagebox.showinfo("Listo", "Se borraron todos los registros y se reiniciaron los IDs.")
+            messagebox.showinfo("Done", "All records were deleted and the IDs were reset.")
         except Exception as e:
             self.session.rollback()
-            messagebox.showerror("Error", f"No se pudo borrar los registros: {e}")
+            messagebox.showerror("Error", f"Could not delete the records: {e}")
 
     
     def on_close(self):
         """
-        Cierre limpio: cierra la sesión de la base de datos de SQLAlchemy y destruye la ventana
+        Clean shutdown: closes the SQLAlchemy database session and destroys the window
         """
         try:
             self.session.close()
@@ -274,36 +274,36 @@ class ChessApp:
 
     def _setup_style(self) -> None:
         """
-        Configura estilos base para ttk y fuente por defecto.
-        Intenta usar un tema agradable si está disponible.
+        Configures base styles for ttk and the default font. 
+        Attempts to use a pleasant theme if available
         """
         try:
-            # Fuente por defecto para (casi) todos los widgets (tk y ttk)
-            # Afectará widgets creados después de esta llamada
-            self.root.option_add('*Font', '{Segoe UI} 10') # Cambia por la que prefieras
+            # Default font for (almost) all widgets (tk and ttk)
+            # Will affect widgets created after this call
+            self.root.option_add('*Font', '{Segoe UI} 10') # Change it for the one you prefer
             style = ttk.Style(self.root)
 
 
-            # Selecciona un tema disponible (orden de preferencia)
-            preferred = ('vista', 'xpnative', 'clam', 'default')
+            # Select an available topic (in order of preference)
+            preferred = ('view', 'xpnative', 'clam', 'default')
             available = style.theme_names()
             for t in preferred:
                 if t in available:
                     style.theme_use(t)
                     break
             
-            # Ajustar fuentes por defecto de Tk (no cadenas sueltas)
+            # Adjust default Tk fonts (not loose strings)
             for fname in ("TkDefaultFont", "TkTextFont", "TkHeadingFont", "TkMenuFont"):
                 try:
                     f = tkfont.nametofont(fname)
-                    f.configure(family="Segoe UI", size=10) # o la familia que prefieras
+                    f.configure(family="Segoe UI", size=10) # or the family you prefer
                 except tk.TclError:
                     pass
 
-            # Crea una fuente nombrada (evita el problema con "Segoe UI")
+            # Create a named font (avoids the issue with "Segoe UI")
             header_font = tkfont.Font(family="Segoe UI", size = 10, weight="bold")
 
-            # Ajustes suaves para botones y etiquetas 
+            # Fine-tuning for buttons and labels
             style.configure('TButton', padding=(10,6))
             style.configure('TLabel', padding=(0,2))
             style.configure('Header.TLabel', font=header_font)
@@ -312,89 +312,88 @@ class ChessApp:
             style.configure("Treeview.Heading", font=("Segoe UI", 10, "bold"))
 
         except Exception: 
-            # Si algo falla (tema no disponible, etc.), seguimos con los valores por defecto
+            # If something fails (theme unavailable, etc.), we fall back to the default values.
             pass
     
 
 
-    # Sincronización con Chess.com
+    # Synchronization with Chess.com
     def sync_from_chesscom(self):
         """
-        Pide el username, consulta la API pública de Chess.com y agrega a la BD
-        todas las partidas 'Ganada' o 'Perdida' de los últimos N meses.
-        (Empates se ignoran por ahora; puedes activarlos en OnlineChessAPI.py)
+        Request the username, query the public Chess.com API, and add all 'Win' or 'Loss' games from the last N months to the database
+        (Draws are ignored for now; you can handle them in OnlineChessAPI.py)
         """
-        username = simpledialog.askstring("Chess.com", "Tu username de Chess.com (exacto):") 
+        username = simpledialog.askstring("Chess.com", "Your Chess.com username (exact):") 
         if not username:
-            return  # Cancelado
+            return  # Canceled
         
-        # Importante: agrega un User-Agent con contacto en caso de que Chess.com bloquee la solicitud
+        # Improtant: Add a User-Agent with contact information in case Chess.com blocks the request
         headers = {
             "User-Agent": USER_AGENT
         }
 
 
         try: 
-            # 1) Obtener Lista de archivos mensuales
+            # 1) Get list of monthly files
             url_archives = f"https://api.chess.com/pub/player/{username}/games/archives"
             r = requests.get(url_archives, headers=headers, timeout=20)
 
             # Errores típicos
             if r.status_code == 403:
-                messagebox.showerror("API 403", "Chess.com rechazó la solicitud. Agrega un User-Agent con contacto.")
+                messagebox.showerror("API 403", "Chess.com rejected the request. Add a User-Agent with contact information")
                 return
             if r.status_code == 404:
-                messagebox.showerror("Usuario no encontrado", f"No se encontró el usuario '{username}' en Chess.com.")
+                messagebox.showerror("User not found", f"The user '{username}' was not found on Chess.com.")
                 return
             r.raise_for_status()
             archives = r.json().get("archives", [])
             print("Num archives:" , len(archives))
             if not archives:
-                messagebox.showinfo("Sin datos", f"No hay archivos de partidas para '{username}'.")
+                messagebox.showinfo("No data", f"No match files for '{username}'.")
                 return
         
            
             month_urls = archives[-MONTHS_TO_FETCH:]
-            print("Procesando meses:", month_urls)
+            print("Processing months:", month_urls)
 
-            # Contadores para feedback
+            # Feedback counters
             inserted = 0
             scanned = 0
             wins = 0
             losses = 0
             draws = 0 
 
-            # Recorre cada mes y sus partidas
+            # Go through each month and its line items
             for month_url in month_urls:
                 print("GET month:", month_url)
                 m = requests.get(month_url, headers=headers, timeout=30)
                 print("Status month:", m.status_code)
                 if m.status_code == 403:
-                    messagebox.showerror("API 403", "Chess.com rechazó una descarga mensual. Revisa el User-Agent/ratio.")
+                    messagebox.showerror("API 403", "Chess.com rejected a monthly download. Check the User-Agent ratio.")
                     return 
                 m.raise_for_status()
                 games = m.json().get("games", [])
-                print(f"Partidas en {month_url}:", len(games))
+                print(f"Matches in {month_url}:", len(games))
 
                 for g in games:
-                    scanned += 1 # Cuenta las partidas escaneadas
+                    scanned += 1 # Counts scanned matches
                     
-                    # Mapear resultado para 'username' -> "Ganada"/"Perdida"/None
+                    # Mape result for 'username' -> "Win"/"Loss"/None
                     outcome = map_result_for_player(g, username)
                     if outcome is None:
-                        continue # Ignoramos empates/otros estados
+                        continue # We disregard draws/other states
 
-                    # Contadores de wins/losses detectadas (no insertadas)
-                    if outcome == "Ganada":
+                    # Counters for detected (not inserted) wins/losses
+                    if outcome == "Win":
                         wins += 1
-                    elif outcome == "Perdida":
+                    elif outcome == "Loss":
                         losses += 1
                     
-                    # Fecha: usaremos end_time (epoch) si existe
+                    # Date: we will use end_time (epoch) if it exists
                     end_ts = g.get("end_time")
                     date_str = datetime.fromtimestamp(end_ts, tz=timezone.utc).strftime("%Y-%m-%d") if end_ts else ""
                 
-                    # Oponente (Lo determinamos dentro del helper; repetimos aquí por simplicidad)
+                    # Opponent (Determined within the helper; repeated here for simplicity)
                     white = g.get("white", {})
                     black = g.get("black", {})
                     if white.get("username", "").lower() == username.lower():
@@ -402,7 +401,7 @@ class ChessApp:
                     else:
                         opponent = white.get("username")
 
-                    # Evitar duplicados básicos: (opponent, result, date)
+                    # Avoid basic duplicates: (opponent, result, date)
                     exists = (
                         self.session.query(ChessRecord)
                         .filter(
@@ -416,43 +415,43 @@ class ChessApp:
                         self.session.add(ChessRecord(opponent=opponent, result=outcome, date=date_str))
                         inserted +=1
             
-            # Persistir cambios y refrescar UI
+            # Persist changes and refresh UI
             self.session.commit()
             self.refresh_table()
-            messagebox.showinfo("Sincronización Completa", f"Se insertaron {inserted} partidas (Ganada/Perdida).")
+            messagebox.showinfo("Synchronization complete", f"{inserted} matches (Win/Loss) were inserted.")
 
-            # Resumen visible: (tanto en messagebox como en consola)
+            # Visible summary: (in both the messagebox and the console)
             msg = [
-                f"Escaneadas: {scanned}",
-                f"Wins detectadas: {wins}",
-                f"Losses detectadas: {losses}",
-                f"Empates detectados: {draws}",
-                f"Nuevos insertados: {inserted}"
+                f"Scanned: {scanned}",
+                f"Wins detected: {wins}",
+                f"Losses detected: {losses}",
+                f"Draws detected: {draws}",
+                f"New entries inserted: {inserted}"
             ]
-            messagebox.showinfo("Sincronización Chess.com", "\n".join(msg))
+            messagebox.showinfo("Synchronization Chess.com", "\n".join(msg))
             print("\n".join(msg))
 
-            # Mensaje adicional si no insertó nada
+            # Additional message if nothing was inserted
             if inserted == 0:
                 messagebox.showinfo(
-                    "Sin partidas nuevas",
-                    "No se insertaron partidas nuevas.\n"
-                    "- Puede que todas fueran empates (actualmente ignorados),\n"
-                    "- o que ya estuvieran registradas (deduplicación),\n"
-                    "- o que no haya partidas en los últimos meses procesados."
+                    "No new matches",
+                    "No new matches were inserted.\n"
+                    "- They might all have been draws (currently ignored),\n"
+                    "- or they were already recorded (deduplication),\n"
+                    "- or there are no games in the most recently processed months."
                 )
 
         except requests.RequestException as e:
-            # Errores de red (timeout, DNS, etc.)
-            messagebox.showerror("Red", f"Error de red al consultar Chess.com: {e}")        
+            # Network errors (timeout, DNS, etc.)
+            messagebox.showerror("Network", f"Network error querying Chess.com: {e}")        
             print("Network error:", e)
         except Exception as e:
-            # Otros errores: deshacer transacción e informar
+            # Other errors: roll bacj transaction and report
             self.session.rollback()
-            messagebox.showerror("Error", f"Ocurrió un error al sincronizar: {e}")
+            messagebox.showerror("Error", f"An error occurred while synchronizing: {e}")
             print("Sync error:", e)
 
-# Punto de entrada: crea la raíz de Tkinter (Tk) y arranca la app
+# Entry point: creates the Tkinter root (Tk) and launches the app.
 if __name__ == "__main__":
     reset_chess_records(start_at_zero=False) 
     root = tk.Tk()
