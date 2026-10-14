@@ -8,23 +8,23 @@ from OnlineChessAPI import map_result_for_player
 from datetime import datetime, timezone, date
 from sqlalchemy import text
 
-# Constantes de la App
-APP_TITLE = "Registro de Partidas de Ajedrez - Chess.com"
-USER_AGENT = "ChessRecordApp/1.0 (contacto: paradigmshiftzu09@gmail.com)"
+# App Constants
+APP_TITLE = "Chess Game Record - Chess.com"
+USER_AGENT = "ChessRecordApp/1.0 (contact: (email address)"
 MONTHS_TO_FETCH = 1
 LISTBOX_HEIGHT = 14
 PAD = 10
 
-COLUMNS=("id", "date", "opponent", "result") # Orden de columnas del Treeview
-VALID_RESULTS=("Ganada", "Perdida")
+COLUMNS=("id", "date", "opponent", "result") # Treeview column order
+VALID_RESULTS=("Win", "Lost")
 
 class ChessApp:
     """
-    App de escritorio (Tkinter) para llevar un registro de partidas de Chess.com.
-    - CRUD básico (agregar, editar, eliminar resultados)
-    - Sincronización con la API pública de Chess.com (ganadas/perdidas)
-    - Totales en la parte superior (Ganadas | Perdidas).
-    - Botón para vaciar todo (reset).
+    Desktop app (Tkinter) to track Chess.com matches.
+    - Basic CRUD functionality (add, edit, delete results)
+    - Synchronization with the Chess.com public API (wins/losses)
+    - Totals displayed at the top (Wins | Losses)
+    - Button to clear all data (reset)
     """
 
     def __init__(self, root):
@@ -33,7 +33,7 @@ class ChessApp:
         self.root.minsize(680, 420)
         self._setup_style()
 
-        # Crea una sesión de SQLAlchemy (se importa de models.py)
+        # Create a SQLAlchemy session (imported from models.py)
         self.session = Session()
         
         # --- Layout: header / body / footer ---
@@ -50,19 +50,19 @@ class ChessApp:
         header.grid(row=0, column=0, sticky="ew")
         header.grid_columnconfigure(0, weight=1)
 
-        #----UI: Totales--------
-        # Etiqueta superior que muestra el conteo de ganadas y perdidas 
-        self.totals_lbl = ttk.Label(header, text="Ganadas: 0 | Perdidas: 0", style="Header.TLabel")
+        #----UI: Totals--------
+        # Top label showing the win/loss count 
+        self.totals_lbl = ttk.Label(header, text="Wins: 0 | Losses: 0", style="Header.TLabel")
         self.totals_lbl.grid(row=0, column=0, sticky="w")   
 
     def _build_body(self) -> None:
-        #---Cuerpo: Listado---
+        #---Body: List---
         body = ttk.Frame(self.root, padding=(PAD, 0, PAD, PAD))
         body.grid(row=1, column=0, sticky="nsew")
         self.root.grid_rowconfigure(1, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
 
-        # Treeview con columnas
+        # Treeview with columns
         self.tree = ttk.Treeview(
             body,
             columns=COLUMNS,
@@ -72,9 +72,9 @@ class ChessApp:
         )
 
         self.tree.heading("id", text="ID")
-        self.tree.heading("date", text="Fecha")
-        self.tree.heading("opponent", text="Oponente")
-        self.tree.heading("result", text="Resultado")
+        self.tree.heading("date", text="Date")
+        self.tree.heading("opponent", text="Opponent")
+        self.tree.heading("result", text="Result")
 
         self.tree.column("id", width=60, anchor="center")
         self.tree.column("date", width=120, anchor="center")
@@ -96,12 +96,12 @@ class ChessApp:
         btns.grid(row=2, column=0, sticky="ew")
 
          # ----UI: Botones------
-        ttk.Button(btns, text="Agregar Ganada", command=lambda: self.open_add_dialog("Ganada")).grid(row=0, column=0, padx=(0,6))
-        ttk.Button(btns, text="Agregar Perdida", command=lambda: self.open_add_dialog("Perdida")).grid(row=0, column=1, padx=6)
-        ttk.Button(btns, text="Editar", command=self.open_edit_dialog).grid(row=0, column=2, padx=6)
-        ttk.Button(btns, text="Eliminar", command=self.delete_selected).grid(row=0, column=3, padx=6)
-        ttk.Button(btns, text="Sincronizar Chess.com", command=self.sync_from_chesscom).grid(row=0, column=4, padx=6)
-        ttk.Button(btns, text="Reset (Borrar Todo)", command=self.reset_all_records).grid(row=0, column=5, padx=(6,0))
+        ttk.Button(btns, text="Add Win", command=lambda: self.open_add_dialog("Win")).grid(row=0, column=0, padx=(0,6))
+        ttk.Button(btns, text="Add Loss", command=lambda: self.open_add_dialog("Loss")).grid(row=0, column=1, padx=6)
+        ttk.Button(btns, text="Edit", command=self.open_edit_dialog).grid(row=0, column=2, padx=6)
+        ttk.Button(btns, text="Delete", command=self.delete_selected).grid(row=0, column=3, padx=6)
+        ttk.Button(btns, text="Synchronize Chess.com", command=self.sync_from_chesscom).grid(row=0, column=4, padx=6)
+        ttk.Button(btns, text="Reset (Delete everything)", command=self.reset_all_records).grid(row=0, column=5, padx=(6,0))
          
         btns.grid_columnconfigure(6, weight=1)
         
@@ -114,14 +114,14 @@ class ChessApp:
             for rec in records:
                 self.tree.insert("", "end", iid=str(rec.id), values=(rec.id, rec.date or "", rec.opponent or "", rec.result))
         except Exception as e:
-            messagebox.showerror("DB", f"No se pudieron leer registros:\n{e}")
+            messagebox.showerror("DB", f"Records could not be read:\n{e}")
             return
     
         self.update_totals()
-
+# TE QUEDASTE AQUI
     def update_totals(self):
         """
-        Actualiza los totales de ganadas/perdidas
+        Update the win/loss totals
         """
         try:
             g = self.session.query(ChessRecord).filter(ChessRecord.result == "Ganada").count()
