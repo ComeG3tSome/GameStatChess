@@ -28,7 +28,7 @@ class ChessRecord(Base):
 # password '(password)' and database '(name of database)'
 # Note: keeping the password in the code is not secure for production 
 # Environment variables are typically used for production
-DATABASE_URL = "postgresql+psycopg2://postgres:fireball967810211@localhost:5432/OnlineChessDB"
+DATABASE_URL = "postgresql+psycopg2://(postgresql username):(typedvpassword)@localhost:5432/(name of database)"
 
 # ENGINE CREATION (database connection engine)
 #  - echo=False: does not log all SQL queries (True for debugging)
