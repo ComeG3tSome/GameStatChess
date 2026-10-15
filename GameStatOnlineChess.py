@@ -205,8 +205,8 @@ class ChessApp:
         def on_cancel():
             dlg.destroy()
 
-        ttk.Button(btns, text="Cancelar", command=on_cancel).grid(row=0, column=0, padx=(0,6))
-        ttk.Button(btns, text="Guardar", command=on_accept).grid(row=0, column=1)
+        ttk.Button(btns, text="Cancel", command=on_cancel).grid(row=0, column=0, padx=(0,6))
+        ttk.Button(btns, text="Save", command=on_accept).grid(row=0, column=1)
 
         # Enfoque inicial
         (opp_entry if not record else result_cb).focus_set()
@@ -338,7 +338,7 @@ class ChessApp:
             url_archives = f"https://api.chess.com/pub/player/{username}/games/archives"
             r = requests.get(url_archives, headers=headers, timeout=20)
 
-            # Errores típicos
+            # Typical errors
             if r.status_code == 403:
                 messagebox.showerror("API 403", "Chess.com rejected the request. Add a User-Agent with contact information")
                 return
