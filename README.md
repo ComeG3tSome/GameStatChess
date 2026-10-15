@@ -16,7 +16,7 @@
 * Error Handling: Displays error messages for database failures, network issues, invalid usernames, and Chess.com API request errors.
 
 ## Live Demo
-[![Chess Dashboard App]
+[![Chess Dashboard App](https://github.com/ComeG3tSome/GameStatChess/blob/main/ChessDashboard.png)](https://www.youtube.com/watch?v=2l-8jVkEXDk)
 
 ## Prerequisites
 * **Python 3.10 or higher** — Required to run the application
