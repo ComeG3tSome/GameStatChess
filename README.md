@@ -1,4 +1,4 @@
-# Chess Record App
+# Chess Desktop Match Tracking App
 
 ## Tracks chess wins and losses, supports CRUD operations, and synchronizes recent game results from the Chess.com API into a SQLAlchemy database.
 
@@ -90,7 +90,7 @@ When using the **Synchronize Chess.com** button:
 ## Usage
 1. Ensure that the PostgreSQL server is running and the database connection is properly configured.
 2. Run the application.
-3. The Chess Record App Dashboard opens, displaying a table with the following columns:
+3. The Chess Desktop Match Tracking app's dashboard opens, displaying a table with the following columns:
    * **ID:** Unique identifier assigned to each chess game record.
    * **Date:** Date of the chess match.
    * **Opponent:** Username or name of the opponent
@@ -131,7 +131,7 @@ When using the **Synchronize Chess.com** button:
 
 
 ## Dependencies
-The Chess Record App Dashboard uses the following Python libraries and technologies: 
+The Chess Desktop Match Tracking App's dashboard uses the following Python libraries and technologies: 
 * **Python 3.10+**: Programming language used to develop the application.
 * **tkinter**: Python's standard GUI library used to build the desktop dashboard.
 * **requests**: Handles HTTP requests to retrieve chess game data from the Chess.com Public API
