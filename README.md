@@ -1,4 +1,4 @@
-# Chess Record App
+7# Chess Record App
 
 ## Tracks chess wins and losses, supports CRUD operations, and synchronizes recent game results from the Chess.com API into a SQLAlchemy database.
 
@@ -16,6 +16,19 @@
 * Error Handling: Displays error messages for database failures, network issues, invalid usernames, and Chess.com API request errors.
 
 ## Live Demo
+
+
+
+## Dependencies
+The Chess Record App Dahsboard uses the following Python libraries and technologies: 
+* **Python 3.10+**: Programming language used to develop the application.
+* **tkinter**: Python's standard GUI library used to build the desktop dashboard.
+* **requests**: Handles HTTP requests to retrieve chess game data from the Chess.com Public API
+* **sqlalchemy**: Object-Relational Mapping (ORM) library used to manage database operations.
+* **psycopg2-binary**: PostgreSQL database adapter that enables communication between Python and PostgreSQL.
+* **PostgreSQL**: Relational database management system used to store chess game records.
+
+
 
 ## Prerequisites
 * **Python 3.10 or higher** — Required to run the application
