@@ -1,4 +1,4 @@
-7# Chess Record App
+# Chess Record App
 
 ## Tracks chess wins and losses, supports CRUD operations, and synchronizes recent game results from the Chess.com API into a SQLAlchemy database.
 
@@ -17,7 +17,42 @@
 
 ## Live Demo
 
+## Configuration
+Before running the application, configure the following settings:
 
+1) PostgreSQL Database Configuration
+```
+   1) Ensure that the PostgreSQL server is running.
+   2) Create a PostgreSQL database
+   3) Set the DATABASE_URL environment variable with your PostgreSQL credentials:
+   postgresql+psycopg2://(POSTGRESQL-USERNAME):(PASSWORD)@localhost:5432/(Database name)
+   4) Update models.py to read the database connection string from the environment variable:
+
+   import os
+
+   DATABASE_URL = os.environ["DATABASE_URL"]
+```
+2) Chess.com API Configuration
+
+In GameStatOnlineChess.py configure the following constants:
+```   
+   USER_AGENT = "ChessRecordApp/1.0 (contact: your-email@example.com)"
+   MONTHS_TO_FETCH = 1
+```
+* **USER_AGENT**: Identifies the application when making requests to the Chess.com Public API.
+* **MONTHS_TO_FETCH**: Specifies how many of the most recent available monthly game archives the application retrieves during synchronization. For example, setting MONTHS_TO_FETCH = 3 retrieves games from the three most recent available monthly archives.
+
+3) Chess.com Username
+
+When using the **Synchronize Chess.com** button: 
+```
+1) Enter a valid Chess.com username.
+2) The application retrieves the player's game history from the Chess.com Public API.
+3) Wins and losses are imported into the PostgreSQL database.
+4) The dashboard updates to display the synchronized records and win/loss totals.
+```
+
+**Note:** Draws are currently excluded from synchronization
 
 ## Dependencies
 The Chess Record App Dahsboard uses the following Python libraries and technologies: 
