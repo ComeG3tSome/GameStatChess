@@ -131,7 +131,7 @@ When using the **Synchronize Chess.com** button:
 
 
 ## Dependencies
-The Chess Record App Dahsboard uses the following Python libraries and technologies: 
+The Chess Record App Dashboard uses the following Python libraries and technologies: 
 * **Python 3.10+**: Programming language used to develop the application.
 * **tkinter**: Python's standard GUI library used to build the desktop dashboard.
 * **requests**: Handles HTTP requests to retrieve chess game data from the Chess.com Public API
