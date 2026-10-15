@@ -16,7 +16,7 @@ LISTBOX_HEIGHT = 14
 PAD = 10
 
 COLUMNS=("id", "date", "opponent", "result") # Treeview column order
-VALID_RESULTS=("Win", "Lost")
+VALID_RESULTS=("Win", "Loss")
 
 class ChessApp:
     """
