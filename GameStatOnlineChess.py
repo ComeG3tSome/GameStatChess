@@ -155,7 +155,7 @@ class ChessApp:
         frm = ttk.Frame(dlg, padding=pad)
         frm.grid(row=0, column=0, sticky="nsew")
 
-        ttk.Label(frm, text="Resultado:").grid(row=0, column=0, sticky="w")
+        ttk.Label(frm, text="Result:").grid(row=0, column=0, sticky="w")
 
         result_var = tk.StringVar(value=(record.result if record else (default_result or "Win")))
         result_cb = ttk.Combobox(frm, textvariable=result_var, values=VALID_RESULTS, state="readonly", width = 14)
