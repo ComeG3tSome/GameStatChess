@@ -54,6 +54,49 @@ When using the **Synchronize Chess.com** button:
 
 **Note:** Draws are currently excluded from synchronization
 
+## Usage
+1. Ensure that the PostgreSQL server is running and the database connection is properly configured.
+2. Run the application.
+3. The Chess Record App Dashboard opens, displaying a table with the following columns:
+   * **ID:** Unique identifier assigned to each chess game record.
+   * **Date:** Date of the chess match.
+   * **Opponent:** Username or name of the opponent
+   * **Result:** Outcome of the match (Win or Loss)..
+4. To manually add a chess game record:
+   * Click **Add Win** or **Add Loss**.
+   * Enter the opponent's name and the match date in YYYY-MM-DD format.
+   * Select the match result and click **Save** to save the record.
+5. To modify an existing record:
+   * Select a record from the table.
+   * Click **Edit**.
+   * Modify the match result, opponent's name, or date.
+   * Click **Save** to save the changes.
+6. To delete a specific record:
+   * Select the record from the table
+   * Click **Delete**.
+   * Confirm the deletion
+7. To synchronize chess games from Chess.com
+   * Click **Synchronize Chess.com**.
+   * Enter a valid Chess.com username when prompted.
+   * The application retrieves the player's games from the most recent available monthly archives, according to the MONTHS_TO_FETCH setting.
+   * Only wins and losses are processed; draws are currently excluded.
+   * The application checks for existing records based on the opponent, match result, and date to reduce duplicate entries
+   * New records are stored in the PostgreSQL database and displayed in the dashboard.
+8. After synchronization, the application displays a summary containing:
+   * Total games scanned
+   * Wins and losses detected.
+   * Number of new records inserted.
+   * Draws detected (currently not counted by the implementation)
+9. The dashboard automatically updates the total number of wins and losses whenever records are added, edited, deleted, or synchronized.
+10. To delete all stored chess game records:
+   * Click **Reset (Delete everything)**.
+   * Confirm the operation
+   * The application deletes all records and resets their IDs.
+11. Close the application using the window's close button. The database session is automatically closed.
+
+**Note:** In the current implementation, the application also resets the database every time it starts. Remove the reset_chess_records(start_at_zero=False) call from the startup code if you want records to persist between launches.
+
+
 ## Dependencies
 The Chess Record App Dahsboard uses the following Python libraries and technologies: 
 * **Python 3.10+**: Programming language used to develop the application.
