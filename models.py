@@ -16,7 +16,7 @@ class ChessRecord(Base):
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     opponent = Column(String)
-    result = Column(String)  # 'Ganada' o 'Perdida' 
+    result = Column(String)  # 'Win' or 'Loss' 
     date = Column(String)  # Store date as string for simplicity
     
     def __repr__(self):
@@ -28,7 +28,7 @@ class ChessRecord(Base):
 # password '(password)' and database '(name of database)'
 # Note: keeping the password in the code is not secure for production 
 # Environment variables are typically used for production
-DATABASE_URL = "postgresql+psycopg2://(postgresql username):(typedvpassword)@localhost:5432/(name of database)"
+DATABASE_URL = "postgresql+psycopg2://(postgresql username):(typed password)@localhost:5432/(name of database)"
 
 # ENGINE CREATION (database connection engine)
 #  - echo=False: does not log all SQL queries (True for debugging)
