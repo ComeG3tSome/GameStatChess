@@ -16,7 +16,7 @@
 * Error Handling: Displays error messages for database failures, network issues, invalid usernames, and Chess.com API request errors.
 
 ## Live Demo
-[![Chess Dashboard App](https://github.com/ComeG3tSome/GameStatChess/blob/main/ChessDashboard.png)](https://www.youtube.com/watch?v=2l-8jVkEXDk)
+[![Chess Dashboard App](https://github.com/JasonDev546/GameStatChess/blob/main/ChessDashboard.png)](https://www.youtube.com/watch?v=2l-8jVkEXDk)
 
 ## Prerequisites
 * **Python 3.10 or higher** — Required to run the application
@@ -30,7 +30,7 @@
 
 1. Clone this repository to your local machine:
    ```bash
-   git clone https://github.com/ComeG3tSome/GameStatChess
+   git clone https://github.com/JasonDev546/GameStatChess
    cd GameStatChess
    ``` 
 2.  Install the necessary Python packages required for the script to execute successfully:
